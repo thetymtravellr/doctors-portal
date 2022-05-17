@@ -1,14 +1,45 @@
 import { format } from "date-fns";
 import React from "react";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { toast } from 'react-toastify';
+import auth from "../../firebase.init";
 
 const BookingModal = ({ treatment, setTreatment, date }) => {
-  const { name, slots } = treatment;
+  const { _id, name, slots } = treatment;
+  const [user] = useAuthState(auth)
+  const formattedDate = format(date, 'PP')
 
   const handleBooking = e => {
       e.preventDefault();
       const slot = e.target.slot.value;
       console.log(slot);
-      setTreatment(null)
+
+      const booking = {
+        treatmentId: _id,
+        treatment: name,
+        date: formattedDate,
+        slot,
+        patient: user.email,
+        patientName: user.displayName,
+        phone: e.target.phone.value
+      }
+
+      fetch('http://localhost:5000/booking', {
+        method: 'POST',
+        headers: {
+          'content-type' : 'application/json'
+        },
+        body: JSON.stringify(booking)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if(data.success) {
+          toast(`Appointment is set, ${formattedDate} at ${slot}`)
+        } else {
+          toast('Already added')
+        }
+        setTreatment(null)
+      })
   }
 
   return (
@@ -36,7 +67,17 @@ const BookingModal = ({ treatment, setTreatment, date }) => {
             <input
               type="text"
               name='name'
+              value={user.displayName}
+              disabled
               placeholder="Full Name"
+              className="input input-bordered w-full max-w-xs"
+            />
+             <input
+              type="email"
+              name='email'
+              value={user.email}
+              disabled
+              placeholder="Email"
               className="input input-bordered w-full max-w-xs"
             />
             <input
@@ -45,12 +86,7 @@ const BookingModal = ({ treatment, setTreatment, date }) => {
               placeholder="Phone"
               className="input input-bordered w-full max-w-xs"
             />
-            <input
-              type="email"
-              name='email'
-              placeholder="Email"
-              className="input input-bordered w-full max-w-xs"
-            />
+           
             <input
               type="submit"
               value="Submit"
